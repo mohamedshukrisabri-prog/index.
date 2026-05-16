@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الباحث عن الطلاب - أوفلاين</title>
+    <style>
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f3f4f6; padding: 15px; max-width: 480px; margin: 0 auto; color: #1f2937; }
+        .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        h1 { margin: 0 0 4px 0; font-size: 22px; text-align: center; color: #1e3a8a; }
+        p.subtitle { margin: 0 0 15px 0; font-size: 13px; color: #6b7280; text-align: center; }
+        
+        /* Input styled for easy Arabic typing */
+        input[type="text"] { width: 100%; padding: 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 18px; margin-bottom: 5px; text-align: right; direction: rtl; }
+        input[type="text"]:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        
+        /* Result card styled for clear visibility in the exam hall */
+        #resultCard { border-right: 6px solid #10b981; display: none; background: #ffffff; direction: rtl; padding: 20px; }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 14px; padding-bottom: 12px; border-b: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; }
+        .result-row:last-child { border: none; margin: 0; padding: 0; }
+        .label { font-size: 12px; color: #6b7280; display: block; margin-bottom: 4px; text-align: right; font-weight: 600; }
+        .val { font-weight: bold; font-size: 18px; color: #111827; text-align: right; }
+        .seat-val { font-size: 36px; color: #2563eb; font-weight: 900; text-align: left; line-height: 1; }
+        
+        #noMatch { display: none; background: #fef3c7; color: #92400e; padding: 14px; border-radius: 12px; text-align: center; font-size: 14px; font-weight: 500; border: 1px solid #fde68a; direction: rtl; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>مُدقق أسماء الطلاب</h1>
+        <p class="subtitle">البحث الذكي السريع داخل القاعة الامتحانية (بدون إنترنت)</p>
+        
+        <input type="text" id="searchInput" oninput="searchStudent()" placeholder="اكتب اسم الطالب هنا...">
+    </div>
+
+    <!-- Results Display Panel -->
+    <div class="card" id="resultCard">
+        <div class="result-row" style="align-items: center;">
+            <div style="flex-grow: 1;">
+                <span class="label">اسم الطالب</span>
+                <span id="resName" class="val"></span>
+            </div>
+            <div>
+                <span class="label" style="text-align: left;">رقم المقعد</span>
+                <span id="resSeat" class="seat-val"></span>
+            </div>
+        </div>
+        <div class="result-row">
+            <div>
+                <span class="label">الرقم التعريفي (ID)</span>
+                <span id="resID" class="val" style="font-family: monospace; letter-spacing: 0.5px;"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="noMatch">لم يتم العثور على طالب بهذا الاسم.</div>
+
+    <script>
+        // =========================================================
+        // YOUR CLEAN STUDENT DATABASE
+        // =========================================================
+        const studentDatabase = [
+            { id: "202610051", name: "احمد هیوى عبدالجبار سلیمان", seat: 142 },
+            { id: "202610052", name: "اخلاص ارشد صالح عثمان", seat: 143 },
+            { id: "202610053", name: "باسل صباح اسماعیل ابراهیم", seat: 144 },
+            { id: "202610054", name: "بیداء ماجد رقیب عبدالله", seat: 145 },
+            { id: "202610055", name: "بەردل كريم فرحو رجب", seat: 146 },
+            { id: "202610056", name: "ثریا ماجد رقیب عبدالله", seat: 147 },
+            { id: "202610057", name: "روندك سعید رجب جمعە", seat: 148 },
+            { id: "202610058", name: "زردشت صبرى حسو محمد", seat: 149 },
+            { id: "202610059", name: "زنار همزه‌ صالح احمد", seat: 150 },
+            { id: "202610060", name: "زینه‌ فهمی عبدالله محمد", seat: 151 },
+            { id: "202610061", name: "سالار سعید حسن سعید", seat: 152 },
+            { id: "202610062", name: "سهيل محمد طاهر نعمت طاهر", seat: 153 },
+            { id: "202610063", name: "شهلا محمدسلیم محمود", seat: 154 },
+            { id: "202610064", name: "علی نادر الیاس خضر", seat: 155 },
+            { id: "202610065", name: "عماد فرحان بایز حمەاغا", seat: 156 },
+            { id: "202610066", name: "عمر مجيد محمد محمدامين", seat: 157 },
+            { id: "202610067", name: "فرج علی سلو عباس", seat: 158 },
+            { id: "202610068", name: "فرهاد جمیل ابرهیم عبداللە", seat: 159 },
+            { id: "202610069", name: "فلاح حسن عمر شمو", seat: 160 },
+            { id: "202610070", name: "فوزی خالد موسو علی", seat: 161 },
+            { id: "202610071", name: "محمد سامی صدقی رشید", seat: 162 },
+            { id: "202610072", name: "محمود نافع مهدی اسماعیل", seat: 163 },
+            { id: "202610073", name: "موءید رزگار علی علو", seat: 164 },
+            { id: "202610074", name: "ميساء طه احمد مصطفى", seat: 165 }
+        ];
+
+        // Strict and optimized text filtering logic
+        function searchStudent() {
+            const query = document.getElementById("searchInput").value.trim().toLowerCase();
+            const rCard = document.getElementById("resultCard");
+            const noMatch = document.getElementById("noMatch");
+
+            if(query === "") {
+                rCard.style.display = "none";
+                noMatch.style.display = "none";
+                return;
+            }
+
+            // Scans and finds matches directly within the text string
+            const match = studentDatabase.find(s => 
+                s.name.toLowerCase().includes(query)
+            );
+
+            if (match) {
+                document.getElementById("resName").innerText = match.name;
+                document.getElementById("resSeat").innerText = match.seat;
+                document.getElementById("resID").innerText = match.id;
+                rCard.style.display = "block";
+                noMatch.style.display = "none";
+            } else {
+                rCard.style.display = "none";
+                noMatch.style.display = "block";
+            }
+        }
+    </script>
+</body>
+</html>
